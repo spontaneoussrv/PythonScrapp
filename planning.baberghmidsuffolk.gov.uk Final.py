@@ -1,13 +1,14 @@
 import logging
+import re
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import os
-import shutil
 import zipfile
 import patoolib  # Required for extracting .rar files
+import shutil
 from datetime import datetime, timedelta
 import random  # Added for random user agent selection
 from dateutil.relativedelta import relativedelta
@@ -170,8 +171,8 @@ while count <= 180:
     selected_user_agent = random.choice(user_agents)
     options.add_argument(f'user-agent={selected_user_agent}')
 
-    driver.get("https://planning.adur-worthing.gov.uk/online-applications/search.do?action=advanced")###URL
-    log_and_print("logging https://planning.adur-worthing.gov.uk/online-applications/search.do?action=advanced")###URL
+    driver.get("https://planning.baberghmidsuffolk.gov.uk/online-applications/search.do?action=advanced")###URL
+    log_and_print("https://planning.baberghmidsuffolk.gov.uk/")###URL
     time.sleep(2)
 
     log_and_print("Inputing Dates and Search")
@@ -196,6 +197,7 @@ while count <= 180:
     while True:
         log_and_print(f"Processing page {page_number}...")
 
+        
         try:
             if page_number > 1:
                 for _ in range(page_number - 1):
@@ -211,14 +213,14 @@ while count <= 180:
 
         i = start_result
         while i <= 101:
-            try:
+            if i <= 100:
                 log_and_print(f"Processing Result {i}... of Page {page_number}")
                 result_xpath = f"/html/body/div/div/div[3]/div[3]/div[3]/div[1]/ul/li[{i}]/a"### Result
                 result_element = WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((By.XPATH, result_xpath))
                 )
                 result_element.click()
-                element = wait_for_element(driver, "/html/body/div/div/div[3]/div[3]/div[3]/table/tbody/tr[1]/td", 10)### Name for Subfolder
+                element = wait_for_element(driver, "/html/body/div/div/div[3]/div[3]/div[9]/table/tbody/tr[1]/td", 10)### Name for Subfolder
                 result_name = ''.join(c for c in element.text if c.isalnum() or c in (' ', '_', '-')).strip()
 
                 time.sleep(1)
@@ -226,7 +228,7 @@ while count <= 180:
                 if not os.path.exists(subFolderPath):
                     os.makedirs(subFolderPath)
 
-                extract_and_save(driver, "/html/body/div/div/div[3]/div[3]/div[3]/table", subFolderPath, "Summary.txt")###
+                extract_and_save(driver, "/html/body/div/div/div[3]/div[3]/ul/li[1]/ul/li[1]/a", subFolderPath, "Summary.txt")###
                 extract_and_save(driver, "/html/body/div/div/div[3]/div[3]/ul/li[1]/ul/li[2]/a", subFolderPath, "Further Information.txt")###
                 extract_and_save(driver, "/html/body/div/div/div[3]/div[3]/ul/li[1]/ul/li[3]/a", subFolderPath, "Contacts.txt")###
                 extract_and_save(driver, "/html/body/div/div/div[3]/div[3]/ul/li[1]/ul/li[4]/a", subFolderPath, "Important Dates.txt")###
@@ -234,38 +236,65 @@ while count <= 180:
                 extract_and_save(driver, "/html/body/div/div/div[3]/div[3]/ul/li[5]/a", subFolderPath, "Related Cases.txt")###
                 extract_and_save(driver, "/html/body/div/div/div[3]/div[3]/ul/li[3]/a", subFolderPath, "Constraints.txt")###
 
-                # Handle Document Download
-                download_button = wait_for_element(driver, "/html/body/div/div/div[3]/div[3]/ul/li[4]/a", 50)### Document
-                download_button.click()
-                time.sleep(1)
+                try:
+                    span_element = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "/html/body/div/div/div[3]/div[3]/ul/li[4]/span")) #/html/body/div/div/div[3]/div[3]/ul/li[4]/a/span
+                    )
+                    span_text = span_element.text.strip().replace("\n", " ").replace("\t", " ")
+                    # Use regex to extract the number inside parentheses
+                    match = re.search(r"\(\s*(\d+)\s*\)", span_text)  # Handles spaces inside parentheses
+                    document_count = int(match.group(1) if match else "0")
+                    print(f"Span Value: {document_count}")
+                except:
+                    span_element = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "/html/body/div/div/div[3]/div[3]/ul/li[4]/a/span")) #
+                    )
+                    span_text = span_element.text.strip().replace("\n", " ").replace("\t", " ")
+                    # Use regex to extract the number inside parentheses
+                    match = re.search(r"\(\s*(\d+)\s*\)", span_text)  # Handles spaces inside parentheses
+                    document_count = int(match.group(1) if match else "0")
+                    print(f"Span Value: {document_count}")
 
-                doc_download_link = wait_for_element(driver, "/html/body/div/div/div[3]/div[3]/div[3]/p/a", 50)### Download Document
-                doc_download_link.click()
-                time.sleep(1)
+                if document_count == 0:
+                        log_and_print(f"No Downloadable content:")
+                        driver.find_element(By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/ul/li[1]/a").click()### Back to Page
+                        time.sleep(1)
+                else:
+                    # Handle Document Download
+                    download_button = wait_for_element(driver, "/html/body/div/div/div[3]/div[3]/ul/li[4]/a", 50)### Document
+                    download_button.click()
+                    time.sleep(1)
 
-                driver.switch_to.window(driver.window_handles[-1])
-                print("Switched to new window: ", driver.title)
+                    #doc_download_link = wait_for_element(driver, "/html/body/div/div/div[3]/div[3]/div[3]/p/a", 50)### Download Document
+                    #doc_download_link.click()
+                    #time.sleep(1)
 
-                select_element = wait_for_element(driver, "/html/body/main/div[1]/div/div/div/div[4]/div[1]/label/select", 50)### set to 100 for download Items
-                select_element.send_keys("100")
+                    #driver.switch_to.window(driver.window_handles[-1])
+                    #print("Switched to new window: ", driver.title)
 
-                time.sleep(2)
-                download_area = wait_for_element(driver, "/html/body/main/div[1]/div/div/div/div[4]/div[3]", 10)### Selectall
-                if "Showing 0 to 0 of 0 entries" not in download_area.text:
-                    select_all = driver.find_element(By.ID, "selectAll")
-                    select_all.click()
-                    time.sleep(2)
-                    download_link = wait_for_element(driver, "/html/body/main/div[1]/div/div/div/div[4]/div[4]/a", 10)### Download Link
+                    #select_element = wait_for_element(driver, "/html/body/main/div[1]/div/div/div/div[4]/div[1]/label/select", 50)### set to 100 for download Items
+                    #select_element.send_keys("100")
+
+                    checkboxes = driver.find_elements(By.XPATH, "/html/body/div/div/div[3]/div[3]/div[9]/form/table/tbody/tr/td[1]/input")
+
+                    for checkbox in checkboxes:
+                        try:
+                            if not checkbox.is_selected():
+                                checkbox.click()
+                                sleep(1)  # Small delay to avoid potential issues
+                        except Exception as e:
+                            print(f"clicked checkbox: {e}")
+
+
+                    download_link = wait_for_element(driver, "/html/body/div/div/div[3]/div[3]/div[9]/form/button", 10)### Download Link
                     download_link.click()
                     time.sleep(10)
-
-                
-                move_downloaded_file(download_path, subFolderPath)
-                log_and_print("Download completed. Moving file to subfolder.")
-                driver.close()
-                driver.switch_to.window(driver.window_handles[0])
-                driver.find_element(By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/ul/li[1]/a").click()### Back to Page
-                time.sleep(1)
+                    move_downloaded_file(download_path, subFolderPath)
+                    log_and_print("Download completed. Moving file to subfolder.")
+                    #driver.close()
+                    #driver.switch_to.window(driver.window_handles[0])
+                    driver.find_element(By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/ul/li[1]/a").click()### Back to Page
+                    time.sleep(1)
 
                 i += 1
 
@@ -281,9 +310,7 @@ while count <= 180:
                         log_and_print("No more pages available.")
                         break
                     
-            except Exception:
-                log_and_print("No more results on this page or an error occurred.")
-                break
+            
 
     driver.quit()
     start_date, end_date = increment_date_range(start_date, end_date)

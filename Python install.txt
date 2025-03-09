@@ -1,0 +1,34 @@
+for local Machine
+python --version
+msedge --version
+Selenium - pip install selenium patool python-dateutil
+Webdriver - pip install webdriver-manager
+pip install patool rarfile
+pip install pyzipper
+
+for all machiine
+py --version
+py -m pip --version
+
+py -m ensurepip --default-pip
+py -m pip install --upgrade pip
+
+py -m pip install selenium
+py -m pip install --upgrade selenium
+
+py -m pip install webdriver-manager selenium
+py -m pip install python-dateutil
+py -m pip install patool rarfile pyzipper
+
+
+
+
+
+
+
+
+
+
+
+
+
